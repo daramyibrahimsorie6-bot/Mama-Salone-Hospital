@@ -247,140 +247,164 @@
     }
 
 
-    /* ---------------------------------------------------------
-       08. APPOINTMENT FORM VALIDATION + SUBMIT
-       --------------------------------------------------------- */
-    function initAppointmentForm() {
-        const form = $('#appointmentForm');
-        if (!form) return;
+     /* ---------------------------------------------------------
+     08. APPOINTMENT FORM VALIDATION + SUBMIT
+     Submits to Formspree via fetch; falls back to native POST
+     if JavaScript is unavailable.
+     --------------------------------------------------------- */
+  function initAppointmentForm() {
+    const form = $('#appointmentForm');
+    if (!form) return;
 
-        const submitBtn = $('#submitBtn');
-        const successBox = $('#formSuccess');
+    const submitBtn  = $('#submitBtn');
+    const successBox = $('#formSuccess');
 
-        // Prevent selecting a past date
-        const dateInput = $('#date');
-        if (dateInput) {
-            const today = new Date().toISOString().split('T')[0];
-            dateInput.setAttribute('min', today);
-        }
+    /* Formspree endpoint — mirrors the form's action attribute */
+    const FORM_ENDPOINT = 'https://formspree.io/f/mwlpobda';
 
-        // Bootstrap-style validation on blur/input
-        const validateField = (field) => {
-            const valid = field.checkValidity();
-            field.classList.toggle('is-invalid', !valid);
-            field.classList.toggle('is-valid', valid && field.value.trim() !== '');
-            return valid;
-        };
-
-        $$('input, select, textarea', form).forEach((field) => {
-            if (field.type === 'hidden' || field.name === 'website') return;
-            field.addEventListener('blur', () => validateField(field));
-            field.addEventListener('input', () => {
-                if (field.classList.contains('is-invalid')) validateField(field);
-            });
-        });
-
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-
-            // Validate all required fields
-            let allValid = true;
-            let firstInvalid = null;
-
-            $$('input, select, textarea', form).forEach((field) => {
-                if (field.name === 'website') return;
-                if (field.type === 'hidden') return;
-
-                const ok = validateField(field);
-                if (!ok) {
-                    allValid = false;
-                    if (!firstInvalid) firstInvalid = field;
-                }
-            });
-
-            // Honeypot check — silently treat as success if filled
-            const honeypot = form.querySelector('[name="website"]');
-            if (honeypot && honeypot.value.trim() !== '') {
-                showSuccess();
-                form.reset();
-                return;
-            }
-
-            if (!allValid) {
-                showToast('Please check the highlighted fields.', 'error');
-                if (firstInvalid) firstInvalid.focus();
-                return;
-            }
-
-            // Simulate submission — REPLACE with real Formspree fetch if desired
-            setLoading(true);
-
-            const action = form.getAttribute('action') || '';
-            const isPlaceholder = action.includes('REPLACE_WITH_YOUR_FORMSPREE_ID');
-
-            if (isPlaceholder) {
-                // No real endpoint yet — show success locally so the site works
-                setTimeout(() => {
-                    setLoading(false);
-                    showSuccess();
-                    form.reset();
-                    $$('.is-valid, .is-invalid', form).forEach((el) => {
-                        el.classList.remove('is-valid', 'is-invalid');
-                    });
-                }, 900);
-                return;
-            }
-
-            // Real Formspree submit (optional advanced path)
-            fetch(action, {
-                method: 'POST',
-                headers: { 'Accept': 'application/json' },
-                body: new FormData(form)
-            })
-                .then((res) => {
-                    setLoading(false);
-                    if (res.ok) {
-                        showSuccess();
-                        form.reset();
-                        $$('.is-valid, .is-invalid', form).forEach((el) => {
-                            el.classList.remove('is-valid', 'is-invalid');
-                        });
-                    } else {
-                        showToast('Something went wrong. Please call us instead.', 'error');
-                    }
-                })
-                .catch(() => {
-                    setLoading(false);
-                    showToast('Network error. Please call us instead.', 'error');
-                });
-        });
-
-        function setLoading(isLoading) {
-            if (!submitBtn) return;
-            if (isLoading) {
-                submitBtn.dataset.originalHtml = submitBtn.innerHTML;
-                submitBtn.disabled = true;
-                submitBtn.innerHTML =
-                    '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending…';
-            } else {
-                submitBtn.disabled = false;
-                if (submitBtn.dataset.originalHtml) {
-                    submitBtn.innerHTML = submitBtn.dataset.originalHtml;
-                }
-            }
-        }
-
-        function showSuccess() {
-            // Inline alert
-            if (successBox) {
-                successBox.classList.remove('d-none');
-                successBox.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'center' });
-            }
-            // Toast
-            showToast('Thank you! Your appointment request has been received.', 'success');
-        }
+    // Prevent selecting a past date
+    const dateInput = $('#date');
+    if (dateInput) {
+      const today = new Date().toISOString().split('T')[0];
+      dateInput.setAttribute('min', today);
     }
 
+    // Bootstrap-style validation on blur/input
+    const validateField = (field) => {
+      const valid = field.checkValidity();
+      field.classList.toggle('is-invalid', !valid);
+      field.classList.toggle('is-valid', valid && field.value.trim() !== '');
+      return valid;
+    };
+
+    $$('input, select, textarea', form).forEach((field) => {
+      if (field.type === 'hidden' || field.name === 'website') return;
+      field.addEventListener('blur', () => validateField(field));
+      field.addEventListener('input', () => {
+        if (field.classList.contains('is-invalid')) validateField(field);
+      });
+    });
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      // --- Validate every required field ---
+      let allValid = true;
+      let firstInvalid = null;
+
+      $$('input, select, textarea', form).forEach((field) => {
+        if (field.name === 'website') return;
+        if (field.type === 'hidden') return;
+
+        const ok = validateField(field);
+        if (!ok) {
+          allValid = false;
+          if (!firstInvalid) firstInvalid = field;
+        }
+      });
+
+      // --- Honeypot: bots fill this, humans don't ---
+      const honeypot = form.querySelector('[name="website"]');
+      if (honeypot && honeypot.value.trim() !== '') {
+        // Pretend success to fool the bot; nothing is sent.
+        showSuccess();
+        form.reset();
+        return;
+      }
+
+      if (!allValid) {
+        showToast('Please check the highlighted fields.', 'error');
+        if (firstInvalid) firstInvalid.focus();
+        return;
+      }
+
+      // --- Submit to Formspree ---
+      setLoading(true);
+
+      fetch(FORM_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json' },
+        body: new FormData(form)
+      })
+        .then(async (res) => {
+          setLoading(false);
+
+          if (res.ok) {
+            showSuccess();
+            form.reset();
+            $$('.is-valid, .is-invalid', form).forEach((el) => {
+              el.classList.remove('is-valid', 'is-invalid');
+            });
+            return;
+          }
+
+          // Formspree returned an error — try to surface the details
+          let topLevelError = 'Something went wrong. Please call us instead.';
+
+          try {
+            const data = await res.json();
+            if (data && Array.isArray(data.errors) && data.errors.length) {
+              data.errors.forEach((err) => {
+                if (err.field) {
+                  const field = form.querySelector(`[name="${err.field}"]`);
+                  if (field) {
+                    field.classList.add('is-invalid');
+                    const feedback = field.parentElement
+                      ? field.parentElement.querySelector('.invalid-feedback')
+                      : null;
+                    if (feedback) feedback.textContent = err.message;
+                  }
+                } else if (err.message) {
+                  topLevelError = err.message;
+                }
+              });
+
+              const firstErr = form.querySelector('.is-invalid');
+              if (firstErr) firstErr.focus();
+            }
+          } catch (_) {
+            /* Response body wasn't JSON — keep the generic message */
+          }
+
+          showToast(topLevelError, 'error');
+        })
+        .catch(() => {
+          setLoading(false);
+          showToast(
+            'Network error. Please check your connection or call us directly.',
+            'error'
+          );
+        });
+    });
+
+    /* ---- Helpers ---- */
+
+    function setLoading(isLoading) {
+      if (!submitBtn) return;
+      if (isLoading) {
+        submitBtn.dataset.originalHtml = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML =
+          '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending…';
+      } else {
+        submitBtn.disabled = false;
+        if (submitBtn.dataset.originalHtml) {
+          submitBtn.innerHTML = submitBtn.dataset.originalHtml;
+        }
+      }
+    }
+
+    function showSuccess() {
+      if (successBox) {
+        successBox.classList.remove('d-none');
+        successBox.scrollIntoView({
+          behavior: prefersReducedMotion ? 'auto' : 'smooth',
+          block: 'center'
+        });
+      }
+      showToast('Thank you! Your appointment request has been received.', 'success');
+    }
+  }
 
     /* ---------------------------------------------------------
        09. TOAST HELPER

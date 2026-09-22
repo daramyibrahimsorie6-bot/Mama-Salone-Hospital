@@ -230,8 +230,11 @@
                             </p>
 
                             <!-- REPLACE: swap the action URL with your own Formspree endpoint -->
-                            <form id="appointmentForm" action="https://formspree.io/f/REPLACE_WITH_YOUR_FORMSPREE_ID"
-                                method="POST" novalidate>
+                            <form id="appointmentForm" action="https://formspree.io/f/mwlpobda" method="POST"
+                                novalidate>
+                                <!-- Nicer notification subject line in the hospital's inbox -->
+<input type="hidden" name="_subject"
+       value="New appointment request — Mama Salone Hospital" />
 
                                 <div class="row g-3">
 
@@ -339,14 +342,14 @@
                                 </div>
                             </form>
 
-                            <!-- Inline success message (shown by JS after submit) -->
+                            <!-- Inline success message (shown by JS after submit) 
                             <div id="formSuccess" class="alert alert-success mt-4 d-none" role="status"
                                 aria-live="polite">
                                 <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
                                 <strong>Thank you!</strong> Your appointment request has been received. Our reception
                                 team will contact you shortly to confirm the details.
                             </div>
-
+-->
                         </div>
                     </div>
 
@@ -577,6 +580,19 @@
     <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
     <script src="main.js"></script>
+    <!-- Place these scripts at the end of the body tag -->
+<script>
+  window.formspree =
+    window.formspree ||
+    function () {
+      (formspree.q = formspree.q || []).push(arguments);
+    };
+  formspree("initForm", {
+    formElement: "#my-form",
+    formId: "mwlpobda",
+  });
+</script>
+<script src="https://unpkg.com/@formspree/ajax@1" defer></script>
 </body>
 
 </html>
